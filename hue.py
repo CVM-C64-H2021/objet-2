@@ -1,8 +1,8 @@
 #######################################################################################################################
 # NAME: Antoine AUger-Maroun, Carl Genest
-#TIME:23/04/2021
+# TIME:23/04/2021
 #FILE: hue.py
-#OBJECT: Retrives info from connected light and send it to API team
+# OBJECT: Retrives info from connected light and send it to API team
 #######################################################################################################################
 
 
@@ -10,8 +10,23 @@ from cloudMQTT import *
 from phue import Bridge
 import json
 import time
-import datetime as dt
+from datetime import datetime
 
+
+b = None
+mqtt = None
+
+
+def init():
+    global b
+    global mqtt
+
+    b = Bridge('192.168.0.127')
+    b.connect()
+    b.get_api()
+
+    mqtt = connectionMQTT(
+        'mqtt://ghhtzpps:MwVNHJbYYirC@driver-01.cloudmqtt.com:18760', '/C64/Projet/Equipe1/Capteur')
 
 
 def lightStatus():
@@ -20,45 +35,59 @@ def lightStatus():
     for l in light:
         lights[len(lights)] = (b.get_light(l.name))
 
-
     status = {}
     for index in lights:
-        status[len(status)] = {"name":lights[index]['name'],"on":lights[index]['state']['on']}
+        print(lights[index])
+        status[len(status)] = {"id": lights[index]['uniqueid'],
+                               "date": datetime.now().isoformat(),
+                               "type": "light",
+                               "valeur": lights[index]['state']['on'],
+                               "alerte": 0,
+                               "messageAlerte": None}
 
+    print(status)
     return status
 
 
+def openLights():
+    light = b.lights
+    for l in light:
+        b.set_light(l.name, 'on', True)
 
 
-b = Bridge('192.168.0.127')
-
-b.connect()
-
-b.get_api()
-
-mqtt = connectionMQTT('mqtt://ghhtzpps:MwVNHJbYYirC@driver-01.cloudmqtt.com:18760', '/C64/Projet/Equipe1/Capteur')
-
-status= lightStatus()
+def closeLights():
+    light = b.lights
+    for l in light:
+        b.set_light(l.name, 'off', True)
 
 
-oldTime = time.localtime(time.time())
-alreadySend = False
-while True:
+def loop():
+
+    INTERVAL = 300.0
+
+    while True:
+
+        currentTime = time.time()
+
+        time.sleep(INTERVAL - currentTime % INTERVAL)
+
+        mqtt.publish(lightStatus(), str(dt.datetime.now()))
+
+        currentTime = time.localtime(currentTime)
+
+        if currentTime.tm_hour == 20:
+            openLights()
+
+        elif currentTime.tm_hour == 8:
+            closeLights()
+
+
+def main():
+
+    init()
+    loop()
     
-    newTime = time.localtime(time.time())
-
-    if newTime.tm_hour != oldTime.tm_hour:
-        alreadySend = False
-    
-
-    if newTime.tm_hour == 8 and newTime.tm_min == 0 and not alreadySend:
-        alreadySend = True
-        status=lightStatus()
-        mqtt.publish(status, str(dt.datetime.now()))
-        print(status)
-        oldTime = newTime
-
-    
 
 
-
+if __name__ == '__main__':
+    main()
