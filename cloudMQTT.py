@@ -35,7 +35,7 @@ class connectionMQTT():
     def publish(self, message, date):
         # Publish a message
 
-        res = json.dumps({"value": message})
+        res = json.dumps(message)
 
         self.mqttc.publish(self.topic, res)
 

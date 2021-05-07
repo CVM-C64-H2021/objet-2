@@ -31,32 +31,29 @@ def init():
 
 def lightStatus():
 
-    time = time.localtime()
+    currentTime = time.localtime()
     light = b.lights
     lights = {}
     for l in light:
         lights[len(lights)] = (b.get_light(l.name))
 
-    status = {}
     for index in lights:
-        print()
-
 
         alerte = 0
-        messageAlerte = None
+        messageAlerte = ""
 
-        if not lights[index]['state']['on'] and time.tm_hour < 8 or time.tm_hour > 20:
+        if lights[index]['state']['on'] and currentTime.tm_hour < 8 or currentTime.tm_hour > 20:
             alerte = 1
-            messageAlerte = "La lumière est fermée alors qu'elle devrait être alumée"
+            messageAlerte = "La lumière est fermée alors qu'elle devrait être allumée"
 
-        status[len(status)] = {"id": index,
-                               "date": datetime.now().isoformat(),
-                               "type": "light",
-                               "valeur": lights[index]['state']['on'],
-                               "alerte": alerte,
-                               "messageAlerte": messageAlerte}
+        data = {"idApp": index,
+                "date": datetime.now().isoformat(),
+                "type": "light",
+                "valeur": str(lights[index]['state']['on']),
+                "alerte": alerte,
+                "messageAlerte": messageAlerte}
 
-    print(status)
+        mqtt.publish(data, str(datetime.now()))
     return status
 
 
@@ -69,7 +66,7 @@ def openLights():
 def closeLights():
     light = b.lights
     for l in light:
-        b.set_light(l.name, 'off', True)
+        b.set_light(l.name, 'on', False)
 
 
 def loop():
@@ -82,9 +79,9 @@ def loop():
 
         time.sleep(INTERVAL - currentTime % INTERVAL)
 
-        mqtt.publish(lightStatus(), str(datetime.now()))
-
         currentTime = time.localtime(currentTime)
+
+        lightStatus()
 
         if currentTime.tm_hour == 20:
             openLights()
@@ -97,7 +94,7 @@ def main():
 
     init()
     loop()
-    
+
 
 
 if __name__ == '__main__':
