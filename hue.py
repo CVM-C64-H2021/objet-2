@@ -1,7 +1,7 @@
 #######################################################################################################################
 # NAME: Antoine AUger-Maroun, Carl Genest
 # TIME:23/04/2021
-#FILE: hue.py
+# FILE: hue.py
 # OBJECT: Retrives info from connected light and send it to API team
 #######################################################################################################################
 
@@ -30,6 +30,8 @@ def init():
 
 
 def lightStatus():
+
+    time = time.localtime()
     light = b.lights
     lights = {}
     for l in light:
@@ -37,13 +39,22 @@ def lightStatus():
 
     status = {}
     for index in lights:
-        print(lights[index])
-        status[len(status)] = {"id": lights[index]['uniqueid'],
+        print()
+
+
+        alerte = 0
+        messageAlerte = None
+
+        if not lights[index]['state']['on'] and time.tm_hour < 8 or time.tm_hour > 20:
+            alerte = 1
+            messageAlerte = "La lumière est fermée alors qu'elle devrait être alumée"
+
+        status[len(status)] = {"id": index,
                                "date": datetime.now().isoformat(),
                                "type": "light",
                                "valeur": lights[index]['state']['on'],
-                               "alerte": 0,
-                               "messageAlerte": None}
+                               "alerte": alerte,
+                               "messageAlerte": messageAlerte}
 
     print(status)
     return status
@@ -71,7 +82,7 @@ def loop():
 
         time.sleep(INTERVAL - currentTime % INTERVAL)
 
-        mqtt.publish(lightStatus(), str(dt.datetime.now()))
+        mqtt.publish(lightStatus(), str(datetime.now()))
 
         currentTime = time.localtime(currentTime)
 
